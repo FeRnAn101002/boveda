@@ -1,0 +1,91 @@
+# Respaldo desatendido de la coleccion Couchbase.
+#
+# Este workflow ES la estrategia de respaldo: nadie abre un panel ni ejecuta
+# nada a mano. Cada dia a las 06:30 UTC lee la coleccion, arma el paquete y
+# lo publica como asset de una release, que es el catalogo durable.
+name: Respaldo programado
+
+on:
+  schedule:
+    # 06:30 UTC = 01:30 en Peru
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      tipo:
+        description: "completo o incremental"
+        type: choice
+        options: [completo, incremental]
+        default: completo
+      desde_cas:
+        description: "CAS de partida (solo para incremental)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  respaldar:
+    name: Respaldar Couchbase Capella
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Ejecutar el respaldo
+        env:
+          CB_CONNECTION_STRING: ${{ secrets.CB_CONNECTION_STRING }}
+          CB_USERNAME: ${{ secrets.CB_USERNAME }}
+          CB_PASSWORD: ${{ secrets.CB_PASSWORD }}
+          CB_BUCKET: vitrina
+          CB_SCOPE: _default
+          CB_COLLECTION: productos
+        run: |
+          if [ -z "$CB_PASSWORD" ]; then
+            echo "Falta el secret CB_PASSWORD."
+            exit 1
+          fi
+          mkdir -p respaldos
+          if [ "${{ inputs.tipo }}" = "incremental" ] && [ -n "${{ inputs.desde_cas }}" ]; then
+            python scripts/respaldar.py --incremental-desde "${{ inputs.desde_cas }}" --etiqueta manual
+          else
+            python scripts/respaldar.py --etiqueta "${{ github.event_name }}"
+          fi
+
+      - name: Publicar el paquete como release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          leer() { python -c "import json;print(json.load(open('respaldos/ultimo.json'))['$1'])"; }
+          nombre=$(leer nombre)
+          tipo=$(leer tipo)
+          docs=$(leer documentos)
+          corte=$(leer hasta_cas)
+          etiqueta="respaldo-$(date -u +%Y%m%d-%H%M%S)"
+
+          gh release create "$etiqueta" "respaldos/$nombre" \
+            --title "Respaldo $tipo · $(date -u +'%Y-%m-%d %H:%M UTC')" \
+            --notes "Respaldo logico $tipo de la coleccion vitrina._default.productos.
+
+          Documentos guardados: $docs
+          hasta_cas: $corte
+
+          Para un incremental posterior, lanzar este workflow a mano con ese CAS.
+          Ojo: si entre medias se restaura, el CAS cambia y la linea base deja de servir."
+
+      - name: Resumen
+        if: always()
+        run: |
+          echo "### Respaldo" >> $GITHUB_STEP_SUMMARY
+          if [ -f respaldos/ultimo.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat respaldos/ultimo.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "El respaldo no llego a generarse." >> $GITHUB_STEP_SUMMARY
+          fi

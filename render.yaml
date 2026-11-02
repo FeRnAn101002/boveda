@@ -1,0 +1,26 @@
+# El servicio como codigo. autoDeploy en false: el unico camino a produccion
+# es el pipeline de GitHub Actions.
+services:
+  - type: web
+    name: boveda
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    autoDeploy: false
+    healthCheckPath: /health
+    envVars:
+      - key: CB_CONNECTION_STRING
+        sync: false
+      - key: CB_USERNAME
+        sync: false
+      - key: CB_PASSWORD
+        sync: false
+      - key: CB_BUCKET
+        value: vitrina
+      - key: CB_SCOPE
+        value: _default
+      - key: CB_COLLECTION
+        value: productos
+      - key: GH_REPO
+        value: FeRnAn101002/boveda

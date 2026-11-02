@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bóveda — respaldo de Couchbase Capella</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <span class="brand"><span class="mark">◈</span> bóveda
+      <small>respaldo lógico de Couchbase Capella</small></span>
+    <span class="estado {{ 'ok' if conectado else 'mal' }}">
+      {{ 'conectado a Capella' if conectado else 'sin conexión' }}
+    </span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  {% if aviso %}<p class="aviso">{{ aviso.replace('-', ' ') }}</p>{% endif %}
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+  <section class="panel">
+    <h1>Por qué esta herramienta existe</h1>
+    <p class="sub">
+      El plan gratuito de Capella no incluye <code>cbbackupmgr</code>, la
+      herramienta nativa. El único respaldo posible es <strong>lógico</strong>:
+      leer por el SDK y escribir a disco. Lo interesante es que los problemas
+      no son los mismos que en un motor de columnas.
+    </p>
+  </section>
+
+  <section class="panel">
+    <div class="cabecera">
+      <h2>Estado de la colección</h2>
+      <form method="post" action="/respaldo" class="enlinea">
+        <input type="hidden" name="tipo" value="completo">
+        <button type="submit">Respaldo completo</button>
+      </form>
+    </div>
+
+    {% if estado %}
+    <div class="metricas">
+      <div class="metrica">
+        <span class="numero">{{ estado.documentos }}</span>
+        <span class="etiqueta-metrica">documentos</span>
+        <span class="fuente">{{ fuente }}</span>
+      </div>
+      <div class="metrica">
+        <span class="numero chico">{{ estado.cas_maximo }}</span>
+        <span class="etiqueta-metrica">CAS más alto</span>
+        <span class="fuente">la línea base de cualquier incremental</span>
+      </div>
+      <div class="metrica">
+        <span class="numero">{{ estado.atributos|length }}</span>
+        <span class="etiqueta-metrica">atributos distintos</span>
+        <span class="fuente">documentos de forma heterogénea</span>
+      </div>
+    </div>
+
+    <table class="tabla">
+      <thead><tr><th>Categoría</th><th class="num">Documentos</th></tr></thead>
+      <tbody>
+        {% for c in estado.categorias %}
+        <tr><td><code>{{ c.categoria }}</code></td><td class="num">{{ c.n }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="vacio">No hay conexión con la base.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Provocar un desastre</h2>
+    <p class="sub">Borra documentos de verdad, para poder enseñar la restauración.</p>
+    <form method="post" action="/desastre" class="enlinea">
+      <input type="number" name="cuantos" value="3" min="1" max="50">
+      <button type="submit" class="peligro">Borrar documentos</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Respaldos en este contenedor</h2>
+    <p class="sub">El disco de Render es efímero: desaparecen al reiniciar.</p>
+
+    {% if locales %}
+    <table class="tabla">
+      <thead><tr><th>Archivo</th><th>Tipo</th><th>Momento</th><th class="num">Docs</th><th></th></tr></thead>
+      <tbody>
+        {% for r in locales %}
+        <tr>
+          <td><code>{{ r.archivo }}</code></td>
+          <td><span class="pill {{ r.tipo }}">{{ r.tipo }}</span></td>
+          <td>{{ r.momento }}</td>
+          <td class="num">{{ r.documentos }}</td>
+          <td class="acciones">
+            <a class="link" href="/descargar/{{ r.archivo }}">descargar</a>
+            <form method="post" action="/respaldo" class="enlinea">
+              <input type="hidden" name="tipo" value="incremental">
+              <input type="hidden" name="desde" value="{{ r.hasta }}">
+              <button type="submit" class="chico">incremental desde aquí</button>
+            </form>
+            <form method="post" action="/restaurar" class="enlinea">
+              <input type="hidden" name="archivo" value="{{ r.archivo }}">
+              <button type="submit" class="chico">restaurar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="vacio">Todavía no hay respaldos en este contenedor.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Catálogo durable — GitHub Releases</h2>
+    <p class="sub">
+      Un job con <code>cron</code> en GitHub Actions respalda la colección sin
+      que nadie pulse nada y sube el paquete como asset de una release.
+      Repositorio: <code>{{ repo }}</code>
+    </p>
+
+    {% if releases %}
+    <table class="tabla">
+      <thead><tr><th>Paquete</th><th>Release</th><th>Publicado</th><th class="num">Bytes</th><th></th></tr></thead>
+      <tbody>
+        {% for r in releases %}
+        <tr>
+          <td><code>{{ r.nombre }}</code></td>
+          <td>{{ r.etiqueta }}</td>
+          <td>{{ r.momento }}</td>
+          <td class="num">{{ r.bytes }}</td>
+          <td class="acciones">
+            <form method="post" action="/restaurar-release" class="enlinea">
+              <input type="hidden" name="url" value="{{ r.url }}">
+              <button type="submit" class="chico">restaurar desde aquí</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="vacio">
+      Aún no hay respaldos publicados. El cron los irá creando, o se puede
+      lanzar a mano desde la pestaña Actions del repositorio.
+    </p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Lo que aprendí comparándolo con Cassandra</h2>
+    <ul class="lista">
+      <li><strong>Aquí el incremental sí ahorra lectura.</strong> Cada documento
+        lleva un <code>CAS</code> que crece en cada escritura, y SQL++ deja
+        filtrar por él en el <code>WHERE</code>. En Cassandra el
+        <code>WRITETIME</code> existe pero no se puede filtrar: hay que leer
+        todo igual y descartar en el cliente.</li>
+      <li><strong>Restaurar invalida tu línea base.</strong> El <code>CAS</code>
+        lo asigna el servidor y no se puede escribir. Tras una restauración
+        cada documento recibe uno nuevo y mayor, así que el siguiente
+        incremental cree que todo cambió.</li>
+      <li><strong>Lo borrado reaparece.</strong> Un export lógico no guarda
+        tombstones. Sin modo espejo, restaurar resucita lo eliminado.</li>
+      <li><strong>Tampoco hay foto de un instante.</strong> La colección sigue
+        aceptando escrituras mientras se exporta.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>Base de Datos II · Couchbase Capella + Render · respaldo automatizado con GitHub Actions</p>
+</footer>
+</body>
+</html>
