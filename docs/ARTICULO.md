@@ -86,7 +86,7 @@ disfrazado.
 El manifiesto guarda el corte para la próxima vez:
 
 ```json
-"hasta_cas": 1792878215037124608
+"hasta_cas": 1793579136874577920
 ```
 
 ## Lo malo: restaurar invalida tu línea base
@@ -101,8 +101,8 @@ Consecuencia: después de restaurar, tu último `hasta_cas` deja de significar
 nada. Medido:
 
 ```
-CAS máximo antes de restaurar:   1792878215037124608
-CAS máximo después:              1793579136874577920
+CAS máximo antes de restaurar:   1793579136874577920
+CAS máximo después:              1793584355177529344
 incremental desde la línea base vieja  ->  11 documentos
 ```
 
@@ -237,6 +237,22 @@ La aplicación tiene un backend en memoria para que las pruebas corran sin
 credenciales. Sin esa comprobación, un despliegue con las credenciales mal
 puestas queda verde, con HTTP 200 y una página que funciona, hablando con una
 base de datos que no existe.
+
+Y esa comprobación se ganó el sueldo. El primer despliegue con credenciales
+pasó el lint, pasó las diez pruebas, construyó la imagen, desplegó... y el
+pipeline falló en el último paso, porque `/health` decía
+`"backend":"sin conexion"`. Sin esa línea habríamos dado el trabajo por
+terminado con la aplicación desconectada de Capella.
+
+Relacionado: las credenciales llegan pegadas en un formulario web, y es muy
+fácil que arrastren un salto de línea invisible. Una contraseña con un `\n`
+al final falla la autenticación con un mensaje que no se parece en nada a su
+causa, así que toda variable de entorno se lee limpia:
+
+```python
+def _var(nombre: str, por_defecto: str = "") -> str:
+    return os.getenv(nombre, por_defecto).strip()
+```
 
 ## Las pruebas corren sin credenciales
 

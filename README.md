@@ -60,8 +60,8 @@ que todo cambió.
 Medido:
 
 ```
-CAS máximo antes de restaurar:  1792878215037124608
-CAS máximo después:             1793579136874577920
+CAS máximo antes de restaurar:  1793579136874577920
+CAS máximo después:             1793584355177529344
 incremental desde la línea base vieja → 11 documentos
 ```
 
@@ -136,7 +136,7 @@ Respaldo desatendido desde la línea de comandos:
 
 ```bash
 python scripts/respaldar.py
-python scripts/respaldar.py --incremental-desde 1792878215037124608
+python scripts/respaldar.py --incremental-desde 1793579136874577920
 ```
 
 Las 10 pruebas corren **sin credenciales**: un cluster falso imita el SDK y
