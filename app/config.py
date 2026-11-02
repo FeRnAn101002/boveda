@@ -30,14 +30,25 @@ class Settings:
         return f"`{self.bucket}`.`{self.scope}`.`{self.collection}`"
 
 
+def _var(nombre: str, por_defecto: str = "") -> str:
+    """Lee una variable de entorno sin los espacios de los extremos.
+
+    Estos valores se pegan a mano en formularios web (Render, GitHub
+    Secrets) y es facil que arrastren un salto de linea. Una contrasena con
+    un '\\n' al final falla la autenticacion con un error que no se parece
+    en nada a la causa real.
+    """
+    return os.getenv(nombre, por_defecto).strip()
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        connection_string=os.getenv("CB_CONNECTION_STRING", ""),
-        username=os.getenv("CB_USERNAME", ""),
-        password=os.getenv("CB_PASSWORD", ""),
-        bucket=os.getenv("CB_BUCKET", "vitrina"),
-        scope=os.getenv("CB_SCOPE", "_default"),
-        collection=os.getenv("CB_COLLECTION", "productos"),
-        gh_repo=os.getenv("GH_REPO", "FeRnAn101002/boveda"),
+        connection_string=_var("CB_CONNECTION_STRING"),
+        username=_var("CB_USERNAME"),
+        password=_var("CB_PASSWORD"),
+        bucket=_var("CB_BUCKET", "vitrina"),
+        scope=_var("CB_SCOPE", "_default"),
+        collection=_var("CB_COLLECTION", "productos"),
+        gh_repo=_var("GH_REPO", "FeRnAn101002/boveda"),
     )
