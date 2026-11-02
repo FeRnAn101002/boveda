@@ -13,6 +13,7 @@ y se publica como asset de una *release*.
 |---|---|
 | **App en vivo** | https://boveda-w0l1.onrender.com |
 | **Base respaldada** | Capella, `vitrina._default.productos` (la de [vitrina-couchbase](https://github.com/FeRnAn101002/vitrina-couchbase)) |
+| **Artículo** | https://dev.to/fernan101002/respaldar-couchbase-sin-cbbackupmgr-el-incremental-que-si-funciona-y-la-trampa-del-cas-1l5b |
 | **Catálogo de respaldos** | [Releases de este repositorio](../../releases) |
 | **Automatización** | GitHub Actions: cron diario + despliegue en Render |
 

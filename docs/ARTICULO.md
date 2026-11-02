@@ -1,6 +1,6 @@
 ---
 title: "Respaldar Couchbase sin cbbackupmgr: el incremental que sí funciona y la trampa del CAS"
-published: false
+published: true
 description: "Capella en plan gratuito no incluye la herramienta nativa de respaldo. Construí la alternativa y la medí: aquí el incremental sí ahorra lectura, pero restaurar invalida la línea base y el siguiente incremental se lleva la colección entera."
 tags: couchbase, nosql, devops, backup
 cover_image: ""
